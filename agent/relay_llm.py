@@ -673,7 +673,13 @@ class AnthropicStreamAccumulator:
         merged = {**_jsonable_dict(base), **assembled}
         if content or "content" not in merged:
             merged["content"] = content
-        return _namespace(merged)
+        response = _namespace(merged)
+        # Tool input is opaque JSON, unlike the attribute-shaped message envelope.
+        # The transport serializes it directly; recursive namespaces destroy that contract.
+        for block, raw in zip(response.content, merged["content"]):
+            if raw.get("type") == "tool_use" and "input" in raw:
+                block.input = raw["input"]
+        return response
 
 
 def _logical_parent(
